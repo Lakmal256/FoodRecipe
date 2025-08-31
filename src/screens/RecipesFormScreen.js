@@ -1,7 +1,7 @@
-import { View,Text,TextInput,TouchableOpacity,Image,StyleSheet,} from "react-native";
+import { View, Text, TextInput, TouchableOpacity, Image, StyleSheet, Alert } from "react-native";
 import React, { useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import {widthPercentageToDP as wp,heightPercentageToDP as hp,} from "react-native-responsive-screen";
+import { widthPercentageToDP as wp, heightPercentageToDP as hp } from "react-native-responsive-screen";
 
 export default function RecipesFormScreen({ route, navigation }) {
   const { recipeToEdit, recipeIndex, onrecipeEdited } = route.params || {};
@@ -12,7 +12,37 @@ export default function RecipesFormScreen({ route, navigation }) {
   );
 
   const saverecipe = async () => {
- 
+    if (!title.trim() || !description.trim()) {
+      Alert.alert("Validation Error", "Title and description are required!");
+      return;
+    }
+
+    const newrecipe = {
+      title,
+      image,
+      description,
+    };
+
+    try {
+      const existingRecipes = await AsyncStorage.getItem("customrecipes");
+      let recipes = existingRecipes ? JSON.parse(existingRecipes) : [];
+
+      if (recipeToEdit && typeof recipeIndex === "number") {
+        // Update existing recipe
+        recipes[recipeIndex] = newrecipe;
+        await AsyncStorage.setItem("customrecipes", JSON.stringify(recipes));
+        if (onrecipeEdited) onrecipeEdited(); // notify parent about edit
+      } else {
+        // Add new recipe
+        recipes.push(newrecipe);
+        await AsyncStorage.setItem("customrecipes", JSON.stringify(recipes));
+      }
+
+      navigation.goBack(); // Navigate back after saving
+    } catch (error) {
+      console.error("Error saving recipe:", error);
+      Alert.alert("Error", "Failed to save the recipe. Please try again.");
+    }
   };
 
   return (
@@ -58,13 +88,15 @@ const styles = StyleSheet.create({
     marginTop: hp(4),
     borderWidth: 1,
     borderColor: "#ddd",
-    padding: wp(.5),
+    padding: wp(1),
     marginVertical: hp(1),
+    borderRadius: 5,
   },
   image: {
-    width: 300,
-    height:200,
-    margin: wp(2),
+    width: "100%",
+    height: 200,
+    marginVertical: hp(1),
+    borderRadius: 5,
   },
   imagePlaceholder: {
     height: hp(20),
@@ -75,10 +107,12 @@ const styles = StyleSheet.create({
     borderColor: "#ddd",
     textAlign: "center",
     padding: wp(2),
+    borderRadius: 5,
+    color: "#999",
   },
   saveButton: {
     backgroundColor: "#4F75FF",
-    padding: wp(.5),
+    paddingVertical: hp(1.5),
     alignItems: "center",
     borderRadius: 5,
     marginTop: hp(2),
@@ -86,5 +120,6 @@ const styles = StyleSheet.create({
   saveButtonText: {
     color: "#fff",
     fontWeight: "bold",
+    fontSize: hp(2),
   },
 });
